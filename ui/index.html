@@ -1,0 +1,477 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Halcyon EHR</title>
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&family=Inter:wght@400;450;500;600&family=IBM+Plex+Mono:wght@400;500&display=swap" rel="stylesheet" />
+<style>
+  :root{
+    --bg:#EEF3F6; --surface:#FFFFFF; --surface-2:#F5F8FA;
+    --ink:#0E2436; --ink-2:#47606F; --ink-3:#7C929F;
+    --line:#D9E4EA; --line-2:#E8EFF3;
+    --primary:#0B6E8C; --primary-ink:#075063;
+    --ok:#0E9F6E; --ok-soft:#E6F6EF;
+    --warn:#B7791F; --warn-soft:#FBF3E2;
+    --crit:#C43D2E; --crit-soft:#FBEBE8;
+    --shadow:0 1px 2px rgba(14,36,54,.04),0 8px 24px -12px rgba(14,36,54,.18);
+    --shadow-lg:0 2px 4px rgba(14,36,54,.05),0 24px 48px -20px rgba(14,36,54,.28);
+    --r:14px; --r-sm:10px;
+  }
+  *{box-sizing:border-box;}
+  html,body{margin:0;padding:0;}
+  body{background:var(--bg);color:var(--ink);font-family:'Inter',system-ui,sans-serif;font-size:15px;line-height:1.5;-webkit-font-smoothing:antialiased;}
+
+  .masthead{position:sticky;top:0;z-index:30;background:rgba(255,255,255,.85);backdrop-filter:saturate(140%) blur(10px);border-bottom:1px solid var(--line);}
+  .masthead-inner{display:flex;align-items:center;gap:18px;height:64px;max-width:1180px;margin:0 auto;padding:0 24px;}
+  .brand{display:flex;align-items:center;gap:11px;}
+  .mark{width:34px;height:34px;border-radius:9px;background:linear-gradient(150deg,var(--primary),#0A8CA8);display:grid;place-items:center;box-shadow:0 4px 12px -4px rgba(11,110,140,.5);}
+  .wordmark{font-family:'Space Grotesk',sans-serif;font-weight:600;font-size:19px;letter-spacing:-.02em;color:var(--ink);line-height:1;}
+  .wordmark span{color:var(--ink-3);font-weight:500;}
+  .masthead-spacer{flex:1;}
+  .status-pill{display:inline-flex;align-items:center;gap:8px;font-family:'IBM Plex Mono',monospace;font-size:12px;color:var(--ink-2);padding:6px 12px;border:1px solid var(--line);border-radius:999px;background:var(--surface);}
+  .dot{width:8px;height:8px;border-radius:50%;background:var(--ink-3);}
+  .dot.live{background:var(--ok);box-shadow:0 0 0 3px var(--ok-soft);}
+  .dot.down{background:var(--crit);box-shadow:0 0 0 3px var(--crit-soft);}
+
+  .shell{max-width:1180px;margin:0 auto;padding:26px 24px 60px;display:grid;grid-template-columns:216px 1fr;gap:28px;}
+  .sidebar{position:sticky;top:90px;align-self:start;display:flex;flex-direction:column;gap:4px;}
+  .nav-item{display:flex;align-items:center;gap:11px;padding:11px 14px;border-radius:var(--r-sm);color:var(--ink-2);cursor:pointer;font-weight:500;border:1px solid transparent;transition:.15s;background:none;text-align:left;width:100%;font-size:14.5px;font-family:'Inter',sans-serif;}
+  .nav-item svg{color:var(--ink-3);flex-shrink:0;transition:.15s;}
+  .nav-item:hover{background:var(--surface);color:var(--ink);}
+  .nav-item.active{background:var(--surface);color:var(--primary-ink);border-color:var(--line);box-shadow:var(--shadow);}
+  .nav-item.active svg{color:var(--primary);}
+  .nav-label{font-family:'IBM Plex Mono',monospace;font-size:11px;letter-spacing:.14em;text-transform:uppercase;color:var(--ink-3);padding:14px 14px 6px;}
+
+  .main{min-width:0;}
+  .view{display:none;animation:rise .35s cubic-bezier(.2,.7,.3,1) both;}
+  .view.active{display:block;}
+  .page-head{margin-bottom:22px;}
+  .page-head h1{font-family:'Space Grotesk',sans-serif;font-weight:600;font-size:28px;letter-spacing:-.02em;margin:0 0 6px;}
+  .page-head p{margin:0;color:var(--ink-2);}
+
+  .stats{display:grid;grid-template-columns:repeat(3,1fr);gap:14px;margin-bottom:26px;}
+  @media(max-width:640px){.stats{grid-template-columns:1fr;}}
+  .stat{background:var(--surface);border:1px solid var(--line);border-radius:var(--r);padding:20px;box-shadow:var(--shadow);}
+  .stat .label{font-family:'IBM Plex Mono',monospace;font-size:11.5px;letter-spacing:.1em;text-transform:uppercase;color:var(--ink-3);margin-bottom:10px;}
+  .stat .num{font-family:'Space Grotesk',sans-serif;font-weight:600;font-size:34px;line-height:1;color:var(--ink);letter-spacing:-.02em;}
+  .stat .num.pending{color:var(--ink-3);font-size:22px;}
+
+  .panel-title{font-family:'Space Grotesk',sans-serif;font-weight:600;font-size:15px;color:var(--ink);margin:0 0 14px;display:flex;align-items:center;gap:12px;}
+  .panel-title .rule{flex:1;height:1px;background:var(--line);}
+  .quick{display:flex;gap:12px;flex-wrap:wrap;}
+  .quick-card{flex:1;min-width:220px;background:var(--surface);border:1px solid var(--line);border-radius:var(--r);padding:20px;cursor:pointer;box-shadow:var(--shadow);transition:transform .12s,box-shadow .18s;display:flex;gap:14px;align-items:center;}
+  .quick-card:hover{transform:translateY(-3px);box-shadow:var(--shadow-lg);}
+  .quick-ic{width:42px;height:42px;border-radius:11px;background:var(--surface-2);border:1px solid var(--line-2);display:grid;place-items:center;color:var(--primary);flex-shrink:0;}
+  .quick-card h3{font-family:'Space Grotesk',sans-serif;font-weight:600;font-size:15.5px;margin:0 0 2px;color:var(--ink);}
+  .quick-card p{margin:0;font-size:13px;color:var(--ink-3);}
+
+  .searchbar{display:flex;gap:10px;align-items:stretch;background:var(--surface);border:1px solid var(--line);border-radius:var(--r);padding:8px;box-shadow:var(--shadow);margin-bottom:20px;transition:box-shadow .2s,border-color .2s;}
+  .searchbar:focus-within{border-color:var(--primary);box-shadow:0 0 0 4px rgba(11,110,140,.1),var(--shadow);}
+  .search-icon{display:grid;place-items:center;padding-left:8px;color:var(--ink-3);}
+  .searchbar input{flex:1;border:0;outline:0;background:transparent;font-family:'Inter',sans-serif;font-size:16px;color:var(--ink);padding:8px 4px;}
+  .searchbar input::placeholder{color:var(--ink-3);}
+
+  .btn{font-family:'Space Grotesk',sans-serif;font-weight:500;font-size:15px;border:0;border-radius:var(--r-sm);cursor:pointer;padding:11px 20px;display:inline-flex;align-items:center;gap:8px;transition:transform .06s,background .2s,border-color .2s;white-space:nowrap;}
+  .btn:active{transform:translateY(1px);}
+  .btn-primary{background:var(--primary);color:#fff;}
+  .btn-primary:hover{background:var(--primary-ink);}
+  .btn-ghost{background:var(--surface);color:var(--ink-2);border:1px solid var(--line);}
+  .btn-ghost:hover{border-color:var(--primary);color:var(--primary);}
+  .btn-danger{background:var(--crit-soft);color:var(--crit);border:1px solid #E7C7C1;}
+  .btn-danger:hover{background:var(--crit);color:#fff;border-color:var(--crit);}
+  .btn-sm{padding:8px 13px;font-size:13.5px;}
+
+  .results-head{display:flex;align-items:baseline;justify-content:space-between;margin-bottom:14px;}
+  .results-head h2{font-family:'Space Grotesk',sans-serif;font-weight:600;font-size:16px;margin:0;}
+  .count{font-family:'IBM Plex Mono',monospace;font-size:12.5px;color:var(--ink-3);}
+
+  .grid{display:grid;grid-template-columns:repeat(2,1fr);gap:14px;}
+  @media(max-width:760px){.grid{grid-template-columns:1fr;}}
+  .card{position:relative;background:var(--surface);border:1px solid var(--line);border-radius:var(--r);padding:18px 18px 16px 22px;overflow:hidden;transition:transform .12s,box-shadow .18s;animation:rise .4s cubic-bezier(.2,.7,.3,1) both;}
+  .card::before{content:"";position:absolute;left:0;top:0;bottom:0;width:4px;background:var(--primary);opacity:0;transition:opacity .18s;}
+  .card:hover{transform:translateY(-3px);box-shadow:var(--shadow-lg);}
+  .card:hover::before{opacity:1;}
+  .card-top{display:flex;align-items:center;gap:13px;margin-bottom:14px;}
+  .avatar{width:44px;height:44px;border-radius:11px;flex-shrink:0;display:grid;place-items:center;font-family:'Space Grotesk',sans-serif;font-weight:600;font-size:16px;color:var(--primary-ink);background:var(--surface-2);border:1px solid var(--line-2);}
+  .pt-name{font-family:'Space Grotesk',sans-serif;font-weight:600;font-size:16.5px;color:var(--ink);}
+  .pt-sub{font-size:13px;color:var(--ink-3);margin-top:1px;}
+  .meta-row{display:flex;gap:10px;flex-wrap:wrap;align-items:center;}
+  .tag{font-family:'IBM Plex Mono',monospace;font-size:11.5px;color:var(--ink-2);background:var(--surface-2);border:1px solid var(--line-2);border-radius:7px;padding:4px 9px;display:inline-flex;gap:6px;align-items:center;}
+  .tag b{color:var(--ink);font-weight:500;}
+  .card-actions{margin-left:auto;display:flex;gap:8px;}
+
+  .state{text-align:center;padding:56px 24px;color:var(--ink-2);background:var(--surface);border:1px dashed var(--line);border-radius:var(--r);}
+  .state h3{font-family:'Space Grotesk',sans-serif;font-weight:600;color:var(--ink);margin:0 0 8px;font-size:17px;}
+  .state p{margin:0 auto;max-width:46ch;}
+  .state.err{border-color:var(--crit);border-style:solid;background:var(--crit-soft);}
+  .state.err h3{color:var(--crit);}
+  .spinner{width:26px;height:26px;border:3px solid var(--line);border-top-color:var(--primary);border-radius:50%;margin:0 auto 14px;animation:spin .8s linear infinite;}
+
+  .back{display:inline-flex;align-items:center;gap:8px;cursor:pointer;font-family:'IBM Plex Mono',monospace;font-size:13px;color:var(--ink-2);background:none;border:0;padding:6px 0;margin-bottom:18px;}
+  .back:hover{color:var(--primary);}
+  .pt-header{background:var(--surface);border:1px solid var(--line);border-radius:var(--r);padding:24px;box-shadow:var(--shadow);display:flex;gap:20px;align-items:center;margin-bottom:22px;flex-wrap:wrap;}
+  .pt-header .avatar{width:60px;height:60px;font-size:22px;border-radius:14px;}
+  .pt-header h2{font-family:'Space Grotesk',sans-serif;font-weight:600;font-size:25px;letter-spacing:-.02em;margin:0 0 8px;}
+  .pt-facts{display:flex;gap:10px;flex-wrap:wrap;}
+  .pt-actions{margin-left:auto;display:flex;gap:8px;flex-wrap:wrap;}
+
+  .vitals{display:flex;flex-direction:column;gap:9px;}
+  .vital{display:grid;grid-template-columns:1fr auto auto auto;align-items:center;gap:14px;background:var(--surface);border:1px solid var(--line);border-radius:var(--r-sm);padding:14px 16px;animation:rise .4s cubic-bezier(.2,.7,.3,1) both;}
+  .vital-name{font-weight:500;color:var(--ink);}
+  .vital-date{font-family:'IBM Plex Mono',monospace;font-size:12px;color:var(--ink-3);}
+  .vital-val{font-family:'IBM Plex Mono',monospace;font-weight:500;font-size:17px;color:var(--ink);white-space:nowrap;}
+  .vital-val .unit{font-size:12px;color:var(--ink-3);margin-left:4px;}
+  .flag{font-family:'IBM Plex Mono',monospace;font-size:11px;padding:3px 9px;border-radius:999px;white-space:nowrap;}
+  .flag.ok{color:var(--ok);background:var(--ok-soft);}
+  .flag.warn{color:var(--warn);background:var(--warn-soft);}
+  .icon-btn{width:32px;height:32px;border-radius:8px;border:1px solid var(--line);background:var(--surface);color:var(--ink-3);cursor:pointer;display:grid;place-items:center;transition:.15s;}
+  .icon-btn:hover{border-color:var(--crit);color:var(--crit);background:var(--crit-soft);}
+
+  .form-card{background:var(--surface);border:1px solid var(--line);border-radius:var(--r);padding:26px;box-shadow:var(--shadow);max-width:620px;}
+  .field{margin-bottom:18px;}
+  .field label{display:block;font-weight:500;font-size:13.5px;color:var(--ink);margin-bottom:7px;}
+  .field .hint{font-weight:400;color:var(--ink-3);font-size:12.5px;}
+  .field input,.field select{width:100%;font-family:'Inter',sans-serif;font-size:15px;color:var(--ink);background:var(--surface-2);border:1px solid var(--line);border-radius:var(--r-sm);padding:12px 14px;outline:0;transition:.15s;}
+  .field input:focus,.field select:focus{border-color:var(--primary);background:#fff;box-shadow:0 0 0 4px rgba(11,110,140,.1);}
+  .row-2{display:grid;grid-template-columns:1fr 1fr;gap:14px;}
+  @media(max-width:520px){.row-2{grid-template-columns:1fr;}}
+  .form-actions{display:flex;gap:10px;margin-top:22px;}
+
+  /* Modal */
+  .modal-overlay{position:fixed;inset:0;z-index:50;background:rgba(14,36,54,.42);backdrop-filter:blur(2px);display:none;align-items:center;justify-content:center;padding:20px;animation:fade .2s both;}
+  .modal-overlay.open{display:flex;}
+  .modal{background:var(--surface);border-radius:var(--r);box-shadow:var(--shadow-lg);width:100%;max-width:460px;padding:26px;animation:pop .25s cubic-bezier(.2,.7,.3,1) both;}
+  .modal h3{font-family:'Space Grotesk',sans-serif;font-weight:600;font-size:19px;margin:0 0 8px;letter-spacing:-.01em;}
+  .modal p{margin:0 0 8px;color:var(--ink-2);}
+  .modal .modal-actions{display:flex;gap:10px;justify-content:flex-end;margin-top:22px;}
+  .modal .warn-ic{width:42px;height:42px;border-radius:11px;background:var(--crit-soft);display:grid;place-items:center;margin-bottom:14px;}
+
+  .toast-wrap{position:fixed;right:22px;bottom:22px;z-index:60;display:flex;flex-direction:column;gap:10px;}
+  .toast{display:flex;gap:12px;align-items:flex-start;background:var(--surface);border:1px solid var(--line);border-left:4px solid var(--ok);border-radius:var(--r-sm);padding:14px 16px;box-shadow:var(--shadow-lg);min-width:280px;max-width:380px;animation:slidein .3s cubic-bezier(.2,.7,.3,1) both;}
+  .toast.err{border-left-color:var(--crit);}
+  .toast-ic{flex-shrink:0;margin-top:1px;}
+  .toast .t-title{font-family:'Space Grotesk',sans-serif;font-weight:600;font-size:14px;color:var(--ink);margin-bottom:2px;}
+  .toast .t-body{font-size:13px;color:var(--ink-2);}
+  .toast .t-body b{font-family:'IBM Plex Mono',monospace;color:var(--ink);font-weight:500;}
+
+  .footer{max-width:1180px;margin:0 auto;padding:22px 24px 40px;color:var(--ink-3);font-size:12.5px;font-family:'IBM Plex Mono',monospace;text-align:center;}
+
+  @media(max-width:820px){
+    .shell{grid-template-columns:1fr;}
+    .sidebar{position:static;flex-direction:row;overflow-x:auto;gap:6px;padding-bottom:6px;}
+    .nav-label{display:none;}
+    .nav-item{white-space:nowrap;}
+  }
+  @keyframes rise{from{opacity:0;transform:translateY(10px);}to{opacity:1;transform:none;}}
+  @keyframes spin{to{transform:rotate(360deg);}}
+  @keyframes slidein{from{opacity:0;transform:translateX(16px);}to{opacity:1;transform:none;}}
+  @keyframes fade{from{opacity:0;}to{opacity:1;}}
+  @keyframes pop{from{opacity:0;transform:translateY(12px) scale(.98);}to{opacity:1;transform:none;}}
+  @keyframes draw{to{stroke-dashoffset:0;}}
+  .ecg{stroke-dasharray:120;stroke-dashoffset:120;animation:draw 1.6s ease-out forwards;}
+  @media(prefers-reduced-motion:reduce){*{animation:none!important;transition:none!important;}.ecg{stroke-dashoffset:0;}}
+</style>
+</head>
+<body>
+
+<header class="masthead">
+  <div class="masthead-inner">
+    <div class="brand">
+      <div class="mark" aria-hidden="true"><svg width="20" height="20" viewBox="0 0 24 24" fill="none"><path class="ecg" d="M2 12h4l2-6 3 12 3-9 2 3h5" stroke="#fff" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg></div>
+      <div class="wordmark">Halcyon <span>EHR</span></div>
+    </div>
+    <div class="masthead-spacer"></div>
+    <div class="status-pill"><span class="dot" id="statusDot"></span><span id="statusText">Connecting…</span></div>
+  </div>
+</header>
+
+<div class="shell">
+  <nav class="sidebar">
+    <div class="nav-label">Menu</div>
+    <button class="nav-item active" data-view="dashboard"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="7" height="9"/><rect x="14" y="3" width="7" height="5"/><rect x="14" y="12" width="7" height="9"/><rect x="3" y="16" width="7" height="5"/></svg>Dashboard</button>
+    <button class="nav-item" data-view="patients"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/></svg>Patients</button>
+    <div class="nav-label">Actions</div>
+    <button class="nav-item" data-view="newpatient"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><line x1="19" y1="8" x2="19" y2="14"/><line x1="22" y1="11" x2="16" y2="11"/></svg>Add patient</button>
+    <button class="nav-item" data-view="newobs"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 12h-4l-3 9L9 3l-3 9H2"/></svg>Record vital</button>
+  </nav>
+
+  <main class="main">
+    <!-- Dashboard -->
+    <section class="view active" id="view-dashboard">
+      <div class="page-head"><h1>Dashboard</h1><p>Overview of the clinical repository.</p></div>
+      <div class="stats">
+        <div class="stat"><div class="label">Patients</div><div class="num pending" id="statPatients">—</div></div>
+        <div class="stat"><div class="label">Observations</div><div class="num pending" id="statObs">—</div></div>
+        <div class="stat"><div class="label">Server</div><div class="num pending" id="statServer" style="font-size:18px">—</div></div>
+      </div>
+      <p class="panel-title">Quick actions <span class="rule"></span></p>
+      <div class="quick">
+        <div class="quick-card" data-go="newpatient"><div class="quick-ic"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><line x1="19" y1="8" x2="19" y2="14"/><line x1="22" y1="11" x2="16" y2="11"/></svg></div><div><h3>Admit a patient</h3><p>Create a new patient record</p></div></div>
+        <div class="quick-card" data-go="newobs"><div class="quick-ic"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M22 12h-4l-3 9L9 3l-3 9H2"/></svg></div><div><h3>Record a vital</h3><p>Add an observation for a patient</p></div></div>
+        <div class="quick-card" data-go="patients"><div class="quick-ic"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="11" cy="11" r="7"/><path d="M21 21l-4-4"/></svg></div><div><h3>Find a patient</h3><p>Search, view, edit or remove</p></div></div>
+      </div>
+    </section>
+
+    <!-- Patients -->
+    <section class="view" id="view-patients">
+      <div class="page-head"><h1>Patients</h1><p>Search, then view, edit, or delete a record.</p></div>
+      <div class="searchbar">
+        <span class="search-icon"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="11" cy="11" r="7"/><path d="M21 21l-4-4"/></svg></span>
+        <input id="q" type="search" placeholder="Search by family name, e.g. Smith" autocomplete="off" />
+        <button class="btn btn-primary" id="searchBtn">Search</button>
+      </div>
+      <div class="results-head"><h2 id="resultsTitle">All patients</h2><span class="count" id="resultsCount"></span></div>
+      <div id="listView"></div>
+    </section>
+
+    <!-- Patient detail -->
+    <section class="view" id="view-patient"><div id="detailView"></div></section>
+
+    <!-- New patient -->
+    <section class="view" id="view-newpatient">
+      <div class="page-head"><h1>Admit a patient</h1><p>Creates a Patient and an Encounter through the clinical service.</p></div>
+      <div class="form-card">
+        <div class="row-2">
+          <div class="field"><label>Given name</label><input id="np-given" type="text" placeholder="Ada" /></div>
+          <div class="field"><label>Family name</label><input id="np-family" type="text" placeholder="Lovelace" /></div>
+        </div>
+        <div class="row-2">
+          <div class="field"><label>Sex</label><select id="np-gender"><option value="female">Female</option><option value="male">Male</option><option value="other">Other</option><option value="unknown">Unknown</option></select></div>
+          <div class="field"><label>Date of birth</label><input id="np-dob" type="date" value="1985-06-15" /></div>
+        </div>
+        <div class="form-actions"><button class="btn btn-primary" id="np-submit">Admit patient</button><button class="btn btn-ghost" data-go="dashboard">Cancel</button></div>
+      </div>
+    </section>
+
+    <!-- New observation -->
+    <section class="view" id="view-newobs">
+      <div class="page-head"><h1>Record a vital</h1><p>Adds an Observation for a patient through the clinical service.</p></div>
+      <div class="form-card">
+        <div class="field"><label>Patient MRN <span class="hint">— the record number from the patient list</span></label><input id="ob-pid" type="text" placeholder="e.g. 53525" /></div>
+        <div class="row-2">
+          <div class="field"><label>Vital</label><select id="ob-kind"><option value="heart_rate">Heart rate</option><option value="body_weight">Body weight</option><option value="systolic_bp">Systolic blood pressure</option><option value="glucose">Blood glucose</option></select></div>
+          <div class="field"><label>Value</label><input id="ob-value" type="number" step="any" placeholder="72" /></div>
+        </div>
+        <div class="field" style="max-width:220px"><label>Unit</label><input id="ob-unit" type="text" value="/min" /></div>
+        <div class="form-actions"><button class="btn btn-primary" id="ob-submit">Record vital</button><button class="btn btn-ghost" data-go="dashboard">Cancel</button></div>
+      </div>
+    </section>
+  </main>
+</div>
+
+<footer class="footer">Halcyon EHR · demo interface · reads over FHIR R4 (:8080) · writes via clinical service (:8000)</footer>
+
+<!-- Modal + toasts -->
+<div class="modal-overlay" id="modal"><div class="modal" id="modalBody"></div></div>
+<div class="toast-wrap" id="toasts"></div>
+
+<script>
+  const FHIR="http://a7090d185048147fe9b676470f7503ec-1753559810.ap-south-1.elb.amazonaws.com:8080/fhir";
+  const API ="http://ace965067959a45e79d25398a5932a2b-688453329.ap-south-1.elb.amazonaws.com:8000";
+
+  async function fhirGet(p){const r=await fetch(FHIR+p,{headers:{Accept:"application/fhir+json"}});if(!r.ok)throw new Error("HTTP "+r.status);return r.json();}
+  async function apiSend(method,p,body){
+    const opt={method,headers:{}};
+    if(body){opt.headers["Content-Type"]="application/json";opt.body=JSON.stringify(body);}
+    const r=await fetch(API+p,opt);
+    const d=await r.json().catch(()=>({}));
+    if(!r.ok)throw new Error(d.detail||("HTTP "+r.status));
+    return d;
+  }
+  const clean=s=>(s||"").replace(/\d+$/,"").trim();
+  function nameParts(p){const n=(p.name&&p.name[0])||{};return{given:(n.given||[]).map(clean).join(" "),family:clean(n.family)};}
+  function displayName(p){const {given,family}=nameParts(p);return (given+" "+family).trim()||"Unnamed patient";}
+  function initials(p){const n=displayName(p).split(" ").filter(Boolean);return ((n[0]?.[0]||"")+(n[n.length-1]?.[0]||"")).toUpperCase()||"–";}
+  function age(b){if(!b)return"—";const d=new Date(b),t=new Date();let a=t.getFullYear()-d.getFullYear();if(t.getMonth()<d.getMonth()||(t.getMonth()===d.getMonth()&&t.getDate()<d.getDate()))a--;return a>=0?a+" yrs":"—";}
+  const cap=s=>s?s[0].toUpperCase()+s.slice(1):"—";
+  const fmtDate=d=>d?new Date(d).toLocaleDateString(undefined,{year:"numeric",month:"short",day:"numeric"}):"";
+  const esc=s=>(s||"").replace(/"/g,"&quot;");
+
+  // toast
+  function toast(title,body,isErr){
+    const el=document.createElement("div");el.className="toast"+(isErr?" err":"");
+    const ic=isErr?'<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#C43D2E" stroke-width="2" stroke-linecap="round"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>':'<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#0E9F6E" stroke-width="2" stroke-linecap="round"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></svg>';
+    el.innerHTML=`<span class="toast-ic">${ic}</span><div><div class="t-title">${title}</div><div class="t-body">${body}</div></div>`;
+    document.getElementById("toasts").appendChild(el);
+    setTimeout(()=>{el.style.transition="opacity .4s";el.style.opacity="0";setTimeout(()=>el.remove(),400);},5200);
+  }
+
+  // modal
+  const modal=document.getElementById("modal"),modalBody=document.getElementById("modalBody");
+  function openModal(html){modalBody.innerHTML=html;modal.classList.add("open");}
+  function closeModal(){modal.classList.remove("open");}
+  modal.addEventListener("click",e=>{if(e.target===modal)closeModal();});
+  document.addEventListener("keydown",e=>{if(e.key==="Escape")closeModal();});
+
+  // navigation
+  let listLoaded=false;
+  function showView(name){
+    document.querySelectorAll(".view").forEach(v=>v.classList.remove("active"));
+    document.getElementById("view-"+name)?.classList.add("active");
+    document.querySelectorAll(".nav-item").forEach(n=>n.classList.toggle("active",n.dataset.view===name));
+    if(name==="dashboard")loadDashboard();
+    if(name==="patients"&&!listLoaded){search("");listLoaded=true;}
+    window.scrollTo({top:0,behavior:"smooth"});
+  }
+  document.querySelectorAll(".nav-item").forEach(n=>n.addEventListener("click",()=>showView(n.dataset.view)));
+  document.querySelectorAll("[data-go]").forEach(b=>b.addEventListener("click",()=>showView(b.dataset.go)));
+
+  // dashboard
+  async function loadDashboard(){
+    const dot=document.getElementById("statusDot"),txt=document.getElementById("statusText");
+    const sP=document.getElementById("statPatients"),sO=document.getElementById("statObs"),sS=document.getElementById("statServer");
+    try{
+      await fhirGet("/metadata?_summary=true");dot.className="dot live";txt.textContent="Connected · FHIR R4";sS.textContent="Online";sS.className="num";
+      const [pc,oc]=await Promise.all([fhirGet("/Patient?_summary=count"),fhirGet("/Observation?_summary=count")]);
+      sP.textContent=(pc.total??0).toLocaleString();sP.className="num";
+      sO.textContent=(oc.total??0).toLocaleString();sO.className="num";
+    }catch(e){dot.className="dot down";txt.textContent="Server offline";sS.textContent="Offline";sS.className="num";sS.style.color="var(--crit)";}
+  }
+
+  // list
+  const listView=document.getElementById("listView");
+  async function search(query){
+    document.getElementById("resultsTitle").textContent=query?`Results for “${query}”`:"All patients";
+    listView.innerHTML=`<div class="state"><div class="spinner"></div><p>Searching…</p></div>`;
+    try{
+      const path=query?`/Patient?name=${encodeURIComponent(query)}&_count=20`:`/Patient?_count=20`;
+      const b=await fhirGet(path);
+      renderList((b.entry||[]).map(e=>e.resource).filter(r=>r&&r.resourceType==="Patient"),b.total);
+    }catch(e){listView.innerHTML=`<div class="state err"><h3>Can't reach the FHIR server</h3><p>Make sure Docker is running at <b>localhost:8080</b>, then reload.</p></div>`;document.getElementById("resultsCount").textContent="";}
+  }
+  function renderList(patients,total){
+    document.getElementById("resultsCount").textContent=patients.length?`${total??patients.length} matched · showing ${patients.length}`:"";
+    if(!patients.length){listView.innerHTML=`<div class="state"><h3>No matching patients</h3><p>Try a family name like <b>Smith</b>, or clear the box to list everyone.</p></div>`;return;}
+    const g=document.createElement("div");g.className="grid";
+    patients.forEach((p,i)=>{
+      const el=document.createElement("div");el.className="card";el.style.animationDelay=(i*28)+"ms";
+      el.innerHTML=`<div class="card-top"><div class="avatar">${initials(p)}</div><div><div class="pt-name">${displayName(p)}</div><div class="pt-sub">${cap(p.gender)} · ${age(p.birthDate)}</div></div></div>
+        <div class="meta-row"><span class="tag">MRN <b>${p.id}</b></span><span class="tag">DOB <b>${p.birthDate||"—"}</b></span>
+        <span class="card-actions"><button class="btn btn-ghost btn-sm" data-view-pt="${p.id}">View</button></span></div>`;
+      el.querySelector("[data-view-pt]").addEventListener("click",()=>openPatient(p.id));
+      g.appendChild(el);
+    });
+    listView.innerHTML="";listView.appendChild(g);
+  }
+
+  // detail
+  const detailView=document.getElementById("detailView");
+  let currentPatient=null;
+  async function openPatient(id){
+    showView("patient");
+    detailView.innerHTML=`<div class="state"><div class="spinner"></div><p>Loading record…</p></div>`;
+    try{
+      const [p,ob]=await Promise.all([fhirGet(`/Patient/${id}`),fhirGet(`/Observation?subject=Patient/${id}&_count=40&_sort=-date`)]);
+      currentPatient=p;
+      renderDetail(p,(ob.entry||[]).map(e=>e.resource).filter(r=>r&&r.resourceType==="Observation"));
+    }catch(e){detailView.innerHTML=`<div class="state err"><h3>Couldn't load record</h3><p>Reload and try again.</p></div>`;}
+  }
+  function vitalFlag(name,value,unit){
+    if(/heart rate/i.test(name)&&/min/.test(unit||"")&&value!=null){if(value<60||value>100)return `<span class="flag warn">out of range</span>`;return `<span class="flag ok">normal</span>`;}
+    return value!=null?`<span class="flag ok">recorded</span>`:"";
+  }
+  function renderDetail(p,obs){
+    const vitals=obs.length?obs.map((o,i)=>{
+      const name=o.code?.coding?.[0]?.display||o.code?.text||"Observation";
+      const vq=o.valueQuantity||{};const val=vq.value;const unit=vq.unit||"";const when=o.effectiveDateTime||o.issued;
+      const vs=(val!=null)?`${(+val).toLocaleString()}<span class="unit">${unit}</span>`:`<span class="unit">—</span>`;
+      return `<div class="vital" style="animation-delay:${i*24}ms"><div><div class="vital-name">${name}</div><div class="vital-date">${fmtDate(when)}</div></div><div class="vital-val">${vs}</div>${vitalFlag(name,val,unit)}
+        <button class="icon-btn" title="Delete observation" data-del-obs="${o.id}"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg></button></div>`;
+    }).join(""):`<div class="state"><p>No observations recorded yet. Use “Record vital” to add one.</p></div>`;
+    detailView.innerHTML=`
+      <button class="back" id="backBtn">← Back to patients</button>
+      <div class="pt-header">
+        <div class="avatar">${initials(p)}</div>
+        <div><h2>${displayName(p)}</h2><div class="pt-facts"><span class="tag">MRN <b>${p.id}</b></span><span class="tag">Sex <b>${cap(p.gender)}</b></span><span class="tag">Age <b>${age(p.birthDate)}</b></span><span class="tag">DOB <b>${p.birthDate||"—"}</b></span></div></div>
+        <div class="pt-actions">
+          <button class="btn btn-ghost btn-sm" id="editBtn">Edit</button>
+          <button class="btn btn-primary btn-sm" id="addVitalBtn">+ Vital</button>
+          <button class="btn btn-danger btn-sm" id="delBtn">Delete</button>
+        </div>
+      </div>
+      <p class="panel-title">Observations &amp; vitals <span class="rule"></span> <span class="count">${obs.length} on file</span></p>
+      <div class="vitals">${vitals}</div>`;
+    document.getElementById("backBtn").addEventListener("click",()=>showView("patients"));
+    document.getElementById("addVitalBtn").addEventListener("click",()=>{document.getElementById("ob-pid").value=p.id;showView("newobs");});
+    document.getElementById("editBtn").addEventListener("click",()=>editPatient(p));
+    document.getElementById("delBtn").addEventListener("click",()=>confirmDeletePatient(p));
+    detailView.querySelectorAll("[data-del-obs]").forEach(b=>b.addEventListener("click",()=>confirmDeleteObs(b.dataset.delObs)));
+  }
+
+  // CREATE patient
+  document.getElementById("np-submit").addEventListener("click",async()=>{
+    const body={given:val("np-given")||"Jane",family:val("np-family")||"Doe",gender:val("np-gender"),birth_date:val("np-dob")||"1970-01-01"};
+    try{const res=await apiSend("POST","/admit",body);toast("Patient admitted",`${body.given} ${body.family} · MRN <b>${res.patient_id}</b>`);setVal("np-given","");setVal("np-family","");listLoaded=false;setVal("ob-pid",res.patient_id);}
+    catch(e){toast("Couldn't admit patient",writeErr(e),true);}
+  });
+
+  // UPDATE patient (edit modal)
+  function editPatient(p){
+    const {given,family}=nameParts(p);
+    openModal(`
+      <h3>Edit patient</h3><p>Update demographics for MRN ${p.id}.</p>
+      <div class="row-2"><div class="field"><label>Given name</label><input id="ed-given" type="text" value="${esc(given)}"></div><div class="field"><label>Family name</label><input id="ed-family" type="text" value="${esc(family)}"></div></div>
+      <div class="row-2"><div class="field"><label>Sex</label><select id="ed-gender">
+        ${["female","male","other","unknown"].map(g=>`<option value="${g}" ${p.gender===g?"selected":""}>${cap(g)}</option>`).join("")}
+      </select></div><div class="field"><label>Date of birth</label><input id="ed-dob" type="date" value="${p.birthDate||""}"></div></div>
+      <div class="modal-actions"><button class="btn btn-ghost" id="ed-cancel">Cancel</button><button class="btn btn-primary" id="ed-save">Save changes</button></div>`);
+    document.getElementById("ed-cancel").addEventListener("click",closeModal);
+    document.getElementById("ed-save").addEventListener("click",async()=>{
+      const body={given:val("ed-given")||"Jane",family:val("ed-family")||"Doe",gender:val("ed-gender"),birth_date:val("ed-dob")||"1970-01-01"};
+      try{await apiSend("PUT",`/patients/${p.id}`,body);closeModal();toast("Patient updated",`MRN <b>${p.id}</b> saved`);listLoaded=false;openPatient(p.id);}
+      catch(e){toast("Couldn't update",writeErr(e),true);}
+    });
+  }
+
+  // DELETE patient (confirm modal)
+  function confirmDeletePatient(p){
+    openModal(`
+      <div class="warn-ic"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#C43D2E" stroke-width="2" stroke-linecap="round"><path d="M10.29 3.86 1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg></div>
+      <h3>Delete this patient?</h3><p><b>${displayName(p)}</b> (MRN ${p.id}) and their observations and encounters will be permanently removed. This can't be undone.</p>
+      <div class="modal-actions"><button class="btn btn-ghost" id="dp-cancel">Cancel</button><button class="btn btn-danger" id="dp-confirm">Delete patient</button></div>`);
+    document.getElementById("dp-cancel").addEventListener("click",closeModal);
+    document.getElementById("dp-confirm").addEventListener("click",async()=>{
+      try{await apiSend("DELETE",`/patients/${p.id}`);closeModal();toast("Patient deleted",`MRN <b>${p.id}</b> removed`);listLoaded=false;showView("patients");}
+      catch(e){toast("Couldn't delete",writeErr(e),true);}
+    });
+  }
+
+  // DELETE observation (confirm modal)
+  function confirmDeleteObs(id){
+    openModal(`
+      <div class="warn-ic"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#C43D2E" stroke-width="2" stroke-linecap="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6"/></svg></div>
+      <h3>Delete this observation?</h3><p>Observation <b>${id}</b> will be permanently removed.</p>
+      <div class="modal-actions"><button class="btn btn-ghost" id="do-cancel">Cancel</button><button class="btn btn-danger" id="do-confirm">Delete</button></div>`);
+    document.getElementById("do-cancel").addEventListener("click",closeModal);
+    document.getElementById("do-confirm").addEventListener("click",async()=>{
+      try{await apiSend("DELETE",`/observation/${id}`);closeModal();toast("Observation deleted",`obs <b>${id}</b> removed`);if(currentPatient)openPatient(currentPatient.id);}
+      catch(e){toast("Couldn't delete",writeErr(e),true);}
+    });
+  }
+
+  // CREATE observation
+  const unitDefaults={heart_rate:"/min",body_weight:"kg",systolic_bp:"mmHg",glucose:"mg/dL"};
+  document.getElementById("ob-kind").addEventListener("change",e=>setVal("ob-unit",unitDefaults[e.target.value]||""));
+  document.getElementById("ob-submit").addEventListener("click",async()=>{
+    const pid=val("ob-pid");if(!pid){toast("Missing patient","Enter the patient MRN first.",true);return;}
+    const body={patient_id:pid,kind:val("ob-kind"),value:parseFloat(val("ob-value"))||0,unit:val("ob-unit")};
+    try{const res=await apiSend("POST","/observation",body);toast("Vital recorded",`${body.kind.replace("_"," ")} = ${body.value}${body.unit} · obs <b>${res.observation_id}</b>`);setVal("ob-value","");}
+    catch(e){toast("Couldn't record vital",writeErr(e),true);}
+  });
+
+  function writeErr(e){const m=(e&&e.message)||"";if(/Failed to fetch|NetworkError/i.test(m))return "Can't reach the clinical service on :8000. Make sure it's running and CORS is enabled.";return m||"Unknown error.";}
+  function val(id){return document.getElementById(id).value.trim();}
+  function setVal(id,v){document.getElementById(id).value=v;}
+
+  // search wiring
+  const q=document.getElementById("q");
+  document.getElementById("searchBtn").addEventListener("click",()=>search(q.value.trim()));
+  q.addEventListener("keydown",e=>{if(e.key==="Enter")search(q.value.trim());});
+
+  loadDashboard();
+</script>
+</body>
+</html>

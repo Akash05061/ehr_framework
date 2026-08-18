@@ -1,0 +1,19 @@
+# TREATMENT ARM gate — your contribution (Prometheus-free, fits Free Tier).
+# Reads the analyzer's live clinical-integrity score via its JSON /score endpoint.
+# A release returning HTTP 200 but writing broken data fails HERE.
+apiVersion: argoproj.io/v1alpha1
+kind: AnalysisTemplate
+metadata:
+  name: clinical-gate
+  namespace: ehr
+spec:
+  metrics:
+    - name: clinical-integrity
+      interval: 20s
+      count: 4
+      successCondition: "result.score >= 0.95"
+      failureLimit: 1
+      provider:
+        web:
+          url: http://clinical-analyzer:9111/score
+          jsonPath: "{$}"

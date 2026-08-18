@@ -1,0 +1,48 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: fhir
+  namespace: ehr
+spec:
+  replicas: 1
+  selector:
+    matchLabels: { app: fhir }
+  template:
+    metadata:
+      labels: { app: fhir }
+    spec:
+      containers:
+        - name: hapi
+          image: hapiproject/hapi:latest
+          env:
+            - { name: SPRING_DATASOURCE_URL, value: "jdbc:postgresql://fhir-db:5432/hapi" }
+            - { name: SPRING_DATASOURCE_USERNAME, value: hapi }
+            - { name: SPRING_DATASOURCE_PASSWORD, value: hapi }
+            - { name: SPRING_DATASOURCE_DRIVERCLASSNAME, value: org.postgresql.Driver }
+            - { name: SPRING_JPA_PROPERTIES_HIBERNATE_DIALECT, value: org.hibernate.dialect.PostgreSQLDialect }
+            - { name: HAPI_FHIR_FHIR_VERSION, value: R4 }
+            - { name: HAPI_FHIR_ALLOW_CASCADING_DELETES, value: "true" }
+            # cap the JVM so HAPI fits on a 1GB t3.micro node
+            - { name: JAVA_TOOL_OPTIONS, value: "-Xmx320m -Xms128m" }
+          ports:
+            - containerPort: 8080
+          resources:
+            requests: { memory: "384Mi", cpu: "100m" }
+            limits: { memory: "512Mi", cpu: "700m" }
+          # HAPI is slow to boot; give it room before marking ready.
+          readinessProbe:
+            httpGet: { path: /fhir/metadata, port: 8080 }
+            initialDelaySeconds: 60
+            periodSeconds: 15
+            failureThreshold: 20
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: fhir
+  namespace: ehr
+spec:
+  selector: { app: fhir }
+  ports:
+    - port: 8080
+      targetPort: 8080

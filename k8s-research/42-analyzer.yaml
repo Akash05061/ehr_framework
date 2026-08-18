@@ -1,0 +1,51 @@
+# The analyzer runs continuously and probes the canary Service. Prometheus
+# scrapes its /metrics (pod annotations below). Runs in BOTH arms; only the
+# gate that consumes its score differs.
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: clinical-analyzer
+  namespace: ehr
+spec:
+  replicas: 1
+  selector:
+    matchLabels: { app: clinical-analyzer }
+  template:
+    metadata:
+      labels: { app: clinical-analyzer }
+      annotations:
+        prometheus.io/scrape: "true"
+        prometheus.io/port: "9110"
+        prometheus.io/path: "/metrics"
+    spec:
+      serviceAccountName: clinical-analyzer
+      containers:
+        - name: analyzer
+          image: 811165583134.dkr.ecr.ap-south-1.amazonaws.com/clinical-analyzer:latest
+          imagePullPolicy: IfNotPresent
+          env:
+            - { name: CANARY_BASE, value: "http://clinical-service-canary:8000" }
+            - { name: FHIR_BASE, value: "http://fhir:8080/fhir" }
+            - { name: PROBE_INTERVAL, value: "15" }
+            - { name: COHORT_SIZE, value: "20" }
+          ports:
+            - containerPort: 9110
+            - containerPort: 9111
+          resources:
+            requests: { memory: "64Mi", cpu: "50m" }
+            limits: { memory: "160Mi", cpu: "400m" }
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: clinical-analyzer
+  namespace: ehr
+  labels: { app: clinical-analyzer }
+spec:
+  selector: { app: clinical-analyzer }
+  ports:
+    - port: 9110
+      targetPort: 9110
+    - name: score
+      port: 9111
+      targetPort: 9111

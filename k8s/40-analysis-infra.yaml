@@ -1,0 +1,21 @@
+# BASELINE ARM gate — conventional infra check (no clinical awareness).
+# Prometheus-free stand-in: always passes (simulates infra metrics being green,
+# since the broken release returns HTTP 200). This is the point: the baseline
+# CANNOT see clinical corruption, so it promotes the broken release.
+apiVersion: argoproj.io/v1alpha1
+kind: AnalysisTemplate
+metadata:
+  name: infra-gate
+  namespace: ehr
+spec:
+  metrics:
+    - name: infra-health
+      interval: 20s
+      count: 2
+      successCondition: "result == true"
+      failureLimit: 3
+      provider:
+        web:
+          url: http://clinical-analyzer:9111/score
+          jsonPath: "{$.score}"
+          # Any 200 response counts as healthy infra; we don't check the value.
