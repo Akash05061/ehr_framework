@@ -1,0 +1,65 @@
+name: CI - Build, Scan, and Push to ECR
+
+# Triggers: run on every push to main, and allow manual runs
+on:
+  push:
+    branches: [ main ]
+  workflow_dispatch:
+
+env:
+  AWS_REGION: ap-south-1
+  ECR_REGISTRY: 811165583134.dkr.ecr.ap-south-1.amazonaws.com
+  IMAGE_NAME: clinical-service
+
+jobs:
+  build-scan-push:
+    name: Build, Trivy Scan, Push
+    runs-on: ubuntu-latest
+
+    steps:
+      # 1. Get the code
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      # 2. Configure AWS credentials from GitHub Secrets
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws-region: ${{ env.AWS_REGION }}
+
+      # 3. Log in to Amazon ECR
+      - name: Login to Amazon ECR
+        id: login-ecr
+        uses: aws-actions/amazon-ecr-login@v2
+
+      # 4. Build the Docker image (tagged with the git commit SHA and 'latest')
+      - name: Build Docker image
+        run: |
+          docker build -t $IMAGE_NAME:${{ github.sha }} app/clinical-service
+          docker tag $IMAGE_NAME:${{ github.sha }} $ECR_REGISTRY/$IMAGE_NAME:${{ github.sha }}
+          docker tag $IMAGE_NAME:${{ github.sha }} $ECR_REGISTRY/$IMAGE_NAME:latest
+
+      # 5. DevSecOps: scan the image for vulnerabilities with Trivy
+      #    'exit-code: 0' means the pipeline reports findings but does not fail the build.
+      #    Change to exit-code: 1 to BLOCK the pipeline on HIGH/CRITICAL vulnerabilities.
+      - name: Run Trivy vulnerability scanner
+        uses: aquasecurity/trivy-action@master
+        with:
+          image-ref: '${{ env.IMAGE_NAME }}:${{ github.sha }}'
+          format: 'table'
+          exit-code: '0'
+          severity: 'HIGH,CRITICAL'
+          ignore-unfixed: true
+
+      # 6. Push the scanned image to ECR
+      - name: Push image to Amazon ECR
+        run: |
+          docker push $ECR_REGISTRY/$IMAGE_NAME:${{ github.sha }}
+          docker push $ECR_REGISTRY/$IMAGE_NAME:latest
+
+      - name: Summary
+        run: |
+          echo "Built, scanned, and pushed $ECR_REGISTRY/$IMAGE_NAME:latest"
+          echo "Also tagged: ${{ github.sha }}"
